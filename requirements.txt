@@ -1,0 +1,8 @@
+# Week 1 (data + audit)
+synergy-dataset>=1.2
+pandas>=2.0
+
+# Week 2 (active-learning loop + evaluation) -- installed now so the env is stable
+scikit-learn>=1.3
+numpy>=1.24
+matplotlib>=3.7
