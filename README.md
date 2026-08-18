@@ -51,6 +51,52 @@ objective here. A reviewer does not care how good the model becomes; they care h
 few abstracts they have to read. The objective is recall and ranking, so the loop
 queries the *most likely positive* instead.
 
+## Validation against the reference implementation
+
+Reproducing your own results proves only that the code agrees with itself. To check
+correctness, I ran ASReview — the standard tool in this field — on the same dataset
+under a matched configuration and compared WSS@95 directly.
+
+**Metric definition.** The implementation here computes WSS@95 = 95% − (% screened
+at 95% recall). This matches Cohen et al. (2006): WSS@r = (TN+FN)/N − 1 + r. At the
+stopping point the unscreened records are exactly TN+FN, so (TN+FN)/N = 1−s, giving
+WSS@95 = 0.95 − s. No correction term is missing.
+
+**Head-to-head, `Nelson_2002`, ASReview 1.6.6, five matched seeds:**
+
+| seed | this repo | ASReview | difference |
+|------|-----------|----------|------------|
+| 0 | 33.0 | 39.3 | −6.3 |
+| 1 | 45.5 | 32.7 | +12.8 |
+| 2 | 30.5 | 33.5 | −3.0 |
+| 3 | 37.6 | 36.5 | +1.1 |
+| 4 | 34.9 | 35.2 | −0.3 |
+
+Mean signed difference **+0.9 percentage points**; mean absolute difference 4.7. The
+sign flips across seeds, so there is no systematic bias — per-seed differences are
+noise, not a ranking error. Over ten seeds the means are near-identical (35.5 here,
+35.4 for ASReview).
+
+Configuration matched as far as the APIs allow: logistic regression, TF-IDF, `max`
+querier, balanced class weighting. Worth noting that `max` — relevance sampling — is
+ASReview's *default* query strategy, which independently corroborates the design
+choice argued for above. ASReview's default classifier is naive Bayes, so it was
+configured down to match; this shows agreement under matched configuration, not
+agreement with ASReview at its best.
+
+**One unflattering difference.** Seed-to-seed variance is higher here: SD 6.0 versus
+ASReview's 2.6. I tested the obvious explanation — that the 10-record seed set
+(versus ASReview's 2) makes the starting point vary more. Reducing to 2 seed records
+lowers SD to 4.4, so that is part of it, but not all of it; the remainder is
+presumably TF-IDF parameters or the balancing strategy. Reducing the seed set also
+moves the mean *away* from ASReview's (38.4 vs 35.4), so the current setting agrees
+better on central tendency and worse on stability. Not resolved.
+
+**Scope.** Five seeds on one small, high-prevalence dataset is thin. ASReview 1.x
+and 2.x have different defaults and are not interchangeable — these numbers are
+v1.6.6. Reproduce with `python3 -m src.validate Nelson_2002 --seeds 0 1 2 3 4`
+(requires `pip install asreview asreview-insights`).
+
 ## Limitations
 
 Quantified rather than hedged:
