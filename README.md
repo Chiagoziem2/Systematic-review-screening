@@ -80,6 +80,42 @@ Quantified rather than hedged:
    on low-prevalence datasets (SD ≈ 0.5 on `van_de_Schoot_2018`), not enough to
    resolve small differences between model variants.
 
+## Why some datasets resist prioritisation
+
+`Moran_2021` (2.13% prevalence, WSS@95 = 13.3) and `Hall_2012` (1.18%, WSS@95 =
+92.0) show that prevalence alone cannot explain performance. I tested one
+hypothesis: that poor-performing datasets have textually *heterogeneous* included
+studies, so a model trained on some positives cannot rank the rest highly.
+
+Measured as `cohesion_ratio` — mean pairwise cosine similarity among positives,
+divided by the same statistic for a random sample of the corpus. The denominator
+matters: in a narrow-topic corpus everything is similar to everything, so raw
+similarity is uninterpretable on its own (raw cohesion correlates with WSS@95 at
+only ρ = +0.41, versus ρ = +0.86 for the ratio).
+
+**Partly supported.** `Moran_2021` ranks last of 26 on textual separation, with a
+cohesion ratio of 1.27 — its included studies are barely more similar to each other
+than two papers drawn at random. That is a concrete explanation for why the method
+nearly fails there: there is no coherent signal to learn.
+
+**But it does not generalise.** `Chou_2003` ranks 19th of 26 on separation — above
+average — and still scores 23.4. It sits almost exactly alongside `Brouwer_2019`
+(separation 0.0674 vs 0.0697) which scores 92.8, a 69-point gap at equivalent
+textual separation. Whatever makes `Chou_2003` hard, this measurement does not
+capture it. It remains unexplained.
+
+**Power limitation.** Marginal correlations look strong (cohesion ratio ρ = +0.86,
+p < 0.001), but textual distinctiveness and prevalence are entangled — low-prevalence
+corpora tend to have more distinctive positives. Controlling for log-prevalence, the
+independent contribution of separation is ρ = +0.38, p = 0.057, which does not clear
+conventional significance at n = 26. This value also moved between runs differing
+only in seed count, which is itself evidence the design is underpowered for the
+question. The defensible claim is that distinctiveness and prevalence are
+confounded here and 26 datasets cannot cleanly separate them — not that
+heterogeneity explains screening difficulty.
+
+Reproduce: `python3 -m src.cohesion`
+
 ## Reproducing
 
 ```bash
@@ -92,6 +128,7 @@ python3 -m src.experiments variants Nelson_2002 # model variants
 python3 -m src.experiments batch Nelson_2002    # batch size cost
 python3 -m src.sweep                            # all 26 datasets + headline figure
 python3 -m src.sweep --coldstart                # warm-start cost per dataset
+python3 -m src.cohesion                         # why some datasets resist prioritisation
 ```
 
 SYNERGY downloads automatically on first run. All results above reproduced
@@ -118,8 +155,12 @@ sampling — are documented inline in `src/screening.py`.
 
 ## Next
 
-- Why do `Moran_2021` and `Chou_2003` resist prioritisation despite low prevalence?
-  Hypothesis to test: textual heterogeneity among included studies, measurable as
-  mean pairwise cosine similarity between positives.
+- `Chou_2003` is still unexplained: high textual separation, poor WSS@95. Candidate
+  checks: abstract coverage (88-94% on the Chou datasets, the lowest in the
+  collection after Appenzeller-Herzog), or positives concentrated in a subtopic the
+  seed set rarely samples.
+- Disentangling prevalence from textual distinctiveness would need more datasets
+  than SYNERGY provides, or a synthetic corpus where the two are varied
+  independently.
 - External validation on CLEF TAR, an independently constructed collection.
 - Transformer embeddings (SPECTER/SciBERT) in place of TF-IDF.
