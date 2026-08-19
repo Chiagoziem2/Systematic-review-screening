@@ -151,6 +151,64 @@ hypothesis, rather than smallest, is the actual finding here.
 
 Reproduce: `pip install sentence-transformers && python3 -m src.compare_embeddings`
 
+## Beyond WSS@95: recall targets and the cold-start assumption, tested
+
+Two follow-up checks, prompted by methodological feedback on the initial writeup.
+
+**WSS@95 hides how expensive higher recall is.** The burden curve below runs the
+same method at 90/95/99/99.5% recall (single seed, illustrative):
+
+| dataset | 90% | 95% | 99% | 99.5% |
+|---|---|---|---|---|
+| Brouwer_2019 | 1.4 | 2.0 | 3.1 | 3.1 |
+| Hall_2012 | 2.3 | 2.7 | 4.4 | **36.6** |
+| van_de_Schoot_2018 | 3.3 | 5.5 | 8.9 | 8.9 |
+| Nelson_2002 | 43.7 | 62.0 | 76.2 | 76.2 |
+| Sep_2021 | 53.1 | 74.9 | 92.3 | 92.3 |
+| Moran_2021 | 72.6 | 81.1 | 85.7 | 90.6 |
+
+`Hall_2012` looks excellent at 95% recall (2.7% screened) but the cost to reach
+99.5% jumps to 36.6% — over 13x. A dataset that looks like the method's best case
+at one threshold can be its worst case at a stricter one. WSS@95 is a reasonable
+benchmarking convention, but reporting it alone would understate this trade-off for
+any review where missing 1 in 20 relevant studies is unacceptable.
+Reproduce: `python3 -m src.burden_curve`.
+
+**The warm-start cost was previously only an analytical estimate — now tested
+empirically.** `coldstart.csv` estimates the hidden cost of the forced-positive
+seed as (N+1)/(P+1) draws under random search. This runs an actual simulation with
+no forced positive — screen randomly until both classes appear, then switch to
+relevance sampling — and compares total effort to warm-start effort plus the
+analytical estimate:
+
+| dataset | warm-start | random-start (actual) | warm + analytical estimate |
+|---|---|---|---|
+| van_de_Schoot_2018 | 6.1 | 8.6 | 8.6 |
+| Bos_2018 | 9.8 | 17.3 | 18.9 |
+| Nelson_2002 | 58.7 | 55.6 | 59.9 |
+
+The analytical estimate matches closely at low prevalence (exact match on
+`van_de_Schoot_2018`, within 2 points on `Bos_2018`) and diverges more on
+`Nelson_2002`, the one high-prevalence case tested — plausibly because the formula's
+assumptions hold better when positives are rare. This validates the hidden warm-start
+cost as a real, not merely theoretical, limitation, and suggests the earlier estimate
+is more reliable at low prevalence than high.
+Reproduce: `python3 -m src.coldstart_experiment`.
+
+**Scope note.** These are single-seed (burden curve) or 3-seed (cold-start) checks
+on a handful of datasets, run to test two specific claims rather than to establish
+robust estimates in their own right. A fuller treatment — every dataset, more seeds,
+confidence intervals on the burden curve — would strengthen both but was judged out
+of proportion to a benchmarking project of this scope.
+
+**Out of scope, deliberately.** Reviewer feedback on this project also suggested
+extending it toward clinical deployment: a human-in-the-loop interface, stopping-rule
+research at 99%+ recall, testing whether missed studies change meta-analysis
+conclusions, inter-rater reliability studies, and a prospective randomised trial of
+AI-assisted vs standard screening. These are legitimate directions but describe a
+multi-year research programme requiring a team and ethics approval, not a next step
+for a solo benchmarking project — noted here rather than pursued.
+
 ## Limitations
 
 Quantified rather than hedged:

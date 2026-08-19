@@ -1,0 +1,4 @@
+dataset,warm_start_effort95,random_start_effort95,empirical_first_positive_pct,analytical_coldstart_pct,warm_plus_analytical
+Nelson_2002,58.7,55.6,2.46,1.24,59.9
+Bos_2018,9.8,17.3,9.35,9.09,18.9
+van_de_Schoot_2018,6.1,8.6,3.98,2.56,8.6
