@@ -97,6 +97,60 @@ and 2.x have different defaults and are not interchangeable — these numbers ar
 v1.6.6. Reproduce with `python3 -m src.validate Nelson_2002 --seeds 0 1 2 3 4`
 (requires `pip install asreview asreview-insights`).
 
+## Testing whether embeddings help on lexically heterogeneous datasets
+
+The cohesion analysis above found that `Moran_2021`'s included studies are
+unusually dissimilar to each other under TF-IDF (cohesion ratio 1.27, lowest in
+the collection) and left open whether this reflects a genuine absence of textual
+signal or a limitation of TF-IDF specifically. Published comparisons already show
+TF-IDF beating sentence-transformer embeddings on this task on average (see
+references below), so re-running that comparison broadly would mostly replicate a
+known result. Instead I tested a narrower, directional prediction: that whatever
+advantage embeddings have should concentrate on datasets like `Moran_2021`, where
+lexical overlap between positives is weakest and a semantic representation might
+recover relationships TF-IDF cannot see.
+
+**The result is the opposite of the prediction, and it reproduces.** Comparing
+TF-IDF against `all-MiniLM-L6-v2` embeddings (identical splits, `precomputed_X`
+swapped, 10 seeds) on `Moran_2021`:
+
+| feature | mean WSS@95 | SD | range |
+|---|---|---|---|
+| TF-IDF | 13.7 | 0.4 | 13.1–14.3 |
+| embedding | 5.0 | 0.7 | 4.1–6.6 |
+
+The two distributions do not overlap across 10 seeds — TF-IDF's worst run (13.1)
+still beats the embedding's best (6.6). `Sep_2021`, the other markedly
+low-cohesion dataset, shows the same direction though with more seed noise
+(TF-IDF 24.2 ± 7.1 vs embedding 16.5 ± 3.2, overlapping ranges).
+
+An initial 8-dataset, 3-seed screen (4 low-cohesion, 4 high-cohesion, split by
+`cohesion_ratio`) pointed the same way: mean delta was +1.6 WSS points for
+embeddings on the high-cohesion control group and −1.7 on the low-cohesion group
+— embeddings did comparatively *worse*, not better, exactly where the hypothesis
+predicted an advantage. That aggregate was driven almost entirely by `Moran_2021`;
+the seed-robustness check above confirms that dataset's effect is real rather than
+a single unlucky draw.
+
+**So the heterogeneity hypothesis is falsified as a predictor of when embeddings
+help, and it points the wrong direction on the one dataset it explains best as a
+description.** A candidate mechanism, untested: TF-IDF can only rank a record
+highly if it shares literal vocabulary with an already-labelled positive, which is
+a conservative failure mode when positives are lexically scattered — it stays
+close to a small, honest signal. A dense 384-dimensional embedding space, given
+only ~10 labelled seed points, may place topically-adjacent but practically
+unrelated abstracts close together, producing a confident but wrong ranking. This
+is speculation, not demonstrated here.
+
+**This is consistent with the wider literature**, which finds TF-IDF (typically
+with naive Bayes or SVM) outperforming SBERT and even domain-specific transformers
+like SPECTER across independent SYNERGY/ASReview benchmarks, in some cases with
+severe degradation from transformer-based features at high recall thresholds.
+That the gap is largest on the dataset most favourable to the embeddings
+hypothesis, rather than smallest, is the actual finding here.
+
+Reproduce: `pip install sentence-transformers && python3 -m src.compare_embeddings`
+
 ## Limitations
 
 Quantified rather than hedged:

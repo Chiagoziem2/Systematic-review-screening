@@ -129,6 +129,7 @@ def run_screening(
     vectorizer_kwargs: dict | None = None,
     max_records: int | None = None,
     stop_at_recall: float | None = None,
+    precomputed_X=None,
 ) -> pd.DataFrame:
     """Simulate screening the corpus in the order chosen by `query_fn`.
 
@@ -142,6 +143,11 @@ def run_screening(
         returned curve is truncated, so do NOT set this if you want the full
         recall-vs-effort figure.
 
+    precomputed_X: swap in ANY feature matrix (dense or sparse, n_records x d) in
+        place of the built-in TF-IDF, e.g. sentence-transformer embeddings from
+        src/embeddings.py. When set, `vectorizer_kwargs` is ignored. This is what
+        makes the feature extractor swappable without touching this function.
+
     Returns a log with one row per batch:
         n_screened / pct_screened  -- the effort axis
         n_found / recall           -- the recall axis
@@ -149,7 +155,12 @@ def run_screening(
     rng = np.random.default_rng(random_state)
 
     y = df["label_included"].to_numpy().astype(int)
-    X = vectorize(build_text(df), **(vectorizer_kwargs or {}))
+    X = precomputed_X if precomputed_X is not None else vectorize(
+        build_text(df), **(vectorizer_kwargs or {}))
+    if precomputed_X is not None and X.shape[0] != len(y):
+        raise ValueError(
+            f"precomputed_X has {X.shape[0]} rows but df has {len(y)} records -- "
+            "they must be in the same row order.")
     n_total = len(y)
     n_pos_total = int(y.sum())
 
